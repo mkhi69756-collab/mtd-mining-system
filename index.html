@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#101827">
+    <title>MTD Mining System</title>
+    <style>
+    :root{color-scheme:dark;--bg:#0b1220;--panel:#121d30;--line:#26364f;--muted:#9aabc3;--green:#38d996;--blue:#6ba8ff}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#1a2c49,var(--bg) 55%);color:#f5f7fb;font:16px system-ui,Arial,sans-serif;min-height:100vh}
+    .wrap{width:min(920px,92%);margin:38px auto}.brand{font-size:13px;letter-spacing:2px;color:var(--green);font-weight:800}
+    h1{font-size:clamp(30px,6vw,48px);margin:8px 0}.sub{color:var(--muted);margin:0 0 26px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:18px}
+    .card{background:rgba(18,29,48,.94);border:1px solid var(--line);border-radius:20px;padding:22px;box-shadow:0 18px 50px #0003}
+    h2{font-size:19px;margin:0 0 16px}.field{margin:12px 0}.field label{display:block;color:var(--muted);font-size:13px;margin-bottom:6px}
+    input{width:100%;padding:13px;border:1px solid var(--line);border-radius:11px;background:#0b1424;color:white;font:inherit}
+    button{border:0;border-radius:12px;padding:13px 16px;font:700 15px system-ui;cursor:pointer;background:var(--green);color:#052317;width:100%;margin-top:10px}
+    button.secondary{background:#253956;color:#eaf2ff}button:disabled{opacity:.45;cursor:not-allowed}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}
+    .stat{background:#0b1424;border:1px solid var(--line);border-radius:14px;padding:15px}.stat small{display:block;color:var(--muted);margin-bottom:7px}.stat strong{font-size:25px}
+    #message{padding:12px;border-radius:10px;background:#0b1424;color:#c9d7ea;min-height:44px;margin-top:14px;white-space:pre-wrap}
+    .good{color:var(--green)!important}.warn{color:#ffd27a!important}.hidden{display:none!important}
+    .timer{font-size:30px;font-weight:800;letter-spacing:2px}.hint{font-size:13px;color:var(--muted);line-height:1.6}
+    .topline{display:flex;justify-content:space-between;align-items:center;gap:12px}.topline button{width:auto;margin:0}
+    footer{color:var(--muted);font-size:12px;margin:24px 2px}
+  </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <div class="brand">MTD • VIRTUAL REWARDS</div>
+      <h1>MTD Mining System</h1>
+      <p class="sub">Register, start a mining session, and collect virtual points every 12 hours.</p>
+      <section id="authArea" class="grid">
+        <div class="card">
+          <h2>Create account</h2>
+          <form id="signupForm">
+            <div class="field">
+              <label for="regName">Full name</label>
+              <input id="regName" required maxlength="80" autocomplete="name" placeholder="Your full name">
+            </div>
+            <div class="field">
+              <label for="regEmail">Email</label>
+              <input id="regEmail" type="email" required autocomplete="email" placeholder="you@example.com">
+            </div>
+            <div class="field">
+              <label for="regPassword">Password (minimum 8 characters)</label>
+              <input id="regPassword" type="password" minlength="8" required autocomplete="new-password" placeholder="Create password">
+            </div>
+            <button type="submit">Register</button>
+          </form>
+        </div>
+        <div class="card">
+          <h2>Login</h2>
+          <form id="loginForm">
+            <div class="field">
+              <label for="loginEmail">Email</label>
+              <input id="loginEmail" type="email" required autocomplete="email">
+            </div>
+            <div class="field">
+              <label for="loginPassword">Password</label>
+              <input id="loginPassword" type="password" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="secondary">Login</button>
+          </form>
+          <p class="hint">If email confirmation is enabled, verify your email after registering, then log in.</p>
+        </div>
+      </section>
+      <section id="dashboard" class="card hidden">
+        <div class="topline">
+          <div>
+            <div class="brand">MINER DASHBOARD</div>
+            <h2 id="welcome">Welcome</h2>
+          </div>
+          <button id="logoutBtn" class="secondary">Logout</button>
+        </div>
+        <div class="stats">
+          <div class="stat">
+            <small>Your MTD Points</small>
+            <strong id="points">0</strong>
+          </div>
+          <div class="stat">
+            <small>Mining reward</small>
+            <strong>+10</strong>
+          </div>
+        </div>
+        <div class="stat">
+          <small>Next mining available in</small>
+          <div id="timer" class="timer">READY</div>
+          <p id="timerNote" class="hint">Start mining to receive 10 virtual points.</p>
+        </div>
+        <button id="mineBtn">⚒ Start Mining (+10 Points)</button>
+        <div id="message" role="status" aria-live="polite">Your account is ready.</div>
+      </section>
+      <footer>Demo system: MTD Points are virtual database points, not cryptocurrency, cash, or a promise of financial return.</footer>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+    // STEP: Replace these two placeholders with your Supabase Project URL and publishable/anon key.
+    const SUPABASE_URL = "https://kpdgsmlpwluvtwdhjpgq.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_gAIW5Yh5LdCuPr31LAEoLQ_8U1ghbL4";
+
+    const configured = SUPABASE_URL.startsWith("https://") &&
+      !SUPABASE_URL.includes("PASTE_") && !SUPABASE_KEY.includes("PASTE_");
+    const client = configured ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+    const $ = id => document.getElementById(id);
+    let timerHandle = null;
+    let nextMiningAt = null;
+
+    function showMessage(text, kind="") {
+      $("message").textContent = text;
+      $("message").className = kind;
+    }
+    function showAuth() {
+      $("authArea").classList.remove("hidden");
+      $("dashboard").classList.add("hidden");
+      if (timerHandle) clearInterval(timerHandle);
+    }
+    function showDashboard() {
+      $("authArea").classList.add("hidden");
+      $("dashboard").classList.remove("hidden");
+    }
+    function startTimer() {
+      if (timerHandle) clearInterval(timerHandle);
+      const tick = () => {
+        if (!nextMiningAt) { $("timer").textContent = "READY"; $("mineBtn").disabled = false; return; }
+        const ms = new Date(nextMiningAt).getTime() - Date.now();
+        if (ms <= 0) {
+          $("timer").textContent = "READY";
+          $("timerNote").textContent = "12 hours completed. You can mine again.";
+          $("mineBtn").disabled = false;
+          clearInterval(timerHandle);
+          return;
+        }
+        const total = Math.floor(ms/1000), h = Math.floor(total/3600);
+        const m = Math.floor((total%3600)/60), s = total%60;
+        $("timer").textContent = [h,m,s].map(n=>String(n).padStart(2,"0")).join(":");
+        $("timerNote").textContent = "Mining cooldown is checked by the database server.";
+        $("mineBtn").disabled = true;
+      };
+      tick(); timerHandle = setInterval(tick,1000);
+    }
+    async function loadProfile() {
+      const {data:{user}} = await client.auth.getUser();
+      if (!user) { showAuth(); return; }
+      showDashboard();
+      $("welcome").textContent = "Welcome, " + (user.user_metadata?.full_name || user.email);
+      const {data,error} = await client.from("profiles")
+        .select("full_name,points,last_mined_at").eq("id",user.id).single();
+      if (error) { showMessage("Could not load profile: " + error.message,"warn"); return; }
+      $("points").textContent = data.points;
+      nextMiningAt = data.last_mined_at
+        ? new Date(new Date(data.last_mined_at).getTime()+12*60*60*1000).toISOString()
+        : null;
+      startTimer();
+      showMessage("Account loaded. Your points are saved in the database.","good");
+    }
+
+    $("signupForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      if (!client) return alert("First add your Supabase URL and publishable key in index.html.");
+      const full_name=$("regName").value.trim(), email=$("regEmail").value.trim(), password=$("regPassword").value;
+      const {data,error}=await client.auth.signUp({email,password,options:{data:{full_name},emailRedirectTo:location.href}});
+      if(error) return alert(error.message);
+      alert(data.session ? "Registration successful!" : "Registration received. Please verify your email, then log in.");
+      if(data.session) await loadProfile();
+    });
+    $("loginForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      if (!client) return alert("First add your Supabase URL and publishable key in index.html.");
+      const {error}=await client.auth.signInWithPassword({email:$("loginEmail").value.trim(),password:$("loginPassword").value});
+      if(error) return alert(error.message);
+      await loadProfile();
+    });
+    $("mineBtn").addEventListener("click", async () => {
+      $("mineBtn").disabled=true;
+      showMessage("Checking mining eligibility with the server...");
+      const {data,error}=await client.rpc("start_mining");
+      if(error) {
+        showMessage(error.message.includes("COOLDOWN") ? "Mining already completed. Please wait until the 12-hour timer ends." : error.message,"warn");
+        await loadProfile(); return;
+      }
+      const result=Array.isArray(data)?data[0]:data;
+      $("points").textContent=result.points;
+      nextMiningAt=result.next_mining_at;
+      startTimer();
+      showMessage("Success! 10 virtual MTD points added to your account.","good");
+    });
+    $("logoutBtn").addEventListener("click", async () => { await client.auth.signOut(); showAuth(); });
+    if (client) {
+      client.auth.onAuthStateChange((_event,session) => { if(session) setTimeout(loadProfile,0); else showAuth(); });
+      client.auth.getSession().then(({data})=>{ if(data.session) loadProfile(); });
+    } else {
+      showMessage("Setup required: add your Supabase URL and key in index.html, then upload the project.","warn");
+    }
+  </script>
+  </body>
+</html>
